@@ -1,0 +1,21 @@
+# Node modules
+/frontend/node_modules/
+
+# React build
+/frontend/build/
+
+# Python env
+venv/
+.env
+
+# backend env
+/backend/.env
+
+# ChromaDB persistent storage (ignore large DB files)
+/backend/chroma_db/
+
+# Logs
+*.log
+
+# VSCode
+.vscode/

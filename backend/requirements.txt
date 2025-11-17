@@ -1,4 +1,12 @@
-flask
-flask-cors
+fastapi
+uvicorn[standard]
+google-generativeai
+chromadb
+langchain
+langchain-openai
+langchain-text-splitters
 openai
 python-dotenv
+pdfminer.six
+requests
+python-multipart

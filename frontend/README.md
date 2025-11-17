@@ -1,23 +1,218 @@
-<!-- # Getting Started with Create React App
+# Medical Chat Assistant - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React-based medical information chatbot UI that integrates with a FastAPI backend offering RAG-powered medical knowledge retrieval, safety constraints, and source attribution.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+✅ **Medical-Safe Chat Interface**
+- Real-time messaging with bot typing indicator
+- Medical disclaimer banner (always visible)
+- Source attribution for retrieved documents
+- Automatic safety filtering (diagnoses/prescriptions blocked)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+✅ **Theme Support**
+- Dark/Light mode toggle
+- Persistent theme preference
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+✅ **Accessibility**
+- ARIA labels and live regions
+- Keyboard navigation support
+- Skip-to-input link
+- Semantic HTML structure
 
-### `npm test`
+✅ **Responsive Design**
+- Mobile-friendly layout
+- Responsive chat bubbles
+- Flexible sidebar for conversation history
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
+
+## Quick Start
+
+### Prerequisites
+- Node.js 14+
+- Backend running on `http://localhost:8000`
+
+### Installation
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Opens http://localhost:3000 automatically.
+
+### Configure Backend
+
+Create `.env` in frontend root:
+```env
+REACT_APP_BACKEND_URL=http://127.0.0.1:8000
+```
+
+---
+
+## Project Structure
+
+```
+frontend/src/
+├── components/
+│   ├── ChatWindow/          # Main chat UI
+│   ├── MedicalDisclaimer/   # Warning banner (NEW)
+│   ├── SourcesDisplay/      # Source attribution (NEW)
+│   └── ...
+├── contexts/
+│   ├── ChatContext.js       # State (UPDATED)
+│   └── ThemeContext.js
+├── utils/
+│   ├── api.js               # Backend client (UPDATED)
+│   └── ...
+└── App.js                   # Root (UPDATED)
+```
+
+---
+
+## Key Components (New/Updated)
+
+### MedicalDisclaimer
+- Yellow warning banner at top
+- Informs users of limitations
+- Always visible
+
+### SourcesDisplay
+- Shows retrieved document sources
+- Appears below bot messages
+- 📄 Icons for document attribution
+
+### Updated: ChatContext
+- Now handles `sources` and `disclaimer` from backend
+- `blocked` flag for safety filter
+- Enhanced error handling
+
+### Updated: api.js
+- `sendMessage()` handles medical responses
+- New `uploadMedicalPDF()` for PDF ingestion
+- Safety filter block handling (400 status)
+- Rate limit handling (429 status)
+
+---
+
+## Usage Example
+
+```javascript
+// Automatic via UI:
+1. Type: "What is diabetes?"
+2. Press Enter
+3. Receive response + sources + disclaimer
+
+// Safety filter (automatic block):
+1. Type: "Can you diagnose me?"
+2. Response: "This type of request cannot be processed..."
+```
+
+---
+
+## API Response Format
+
+Backend `/chat` returns:
+```json
+{
+  "reply": "Diabetes is a metabolic disorder...",
+  "sources": ["mayo-clinic-diabetes.pdf"],
+  "disclaimer": "This is general information..."
+}
+```
+
+Frontend displays:
+- 💬 Message bubble with reply
+- 📚 Sources list
+- ⚠️ Disclaimer
+- ✅ All safety-filtered
+
+---
+
+## Accessibility
+
+- ARIA labels & live regions
+- Keyboard navigation (Tab, Enter)
+- Semantic HTML
+- Skip-to-input link
+- High contrast ready
+
+---
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+Creates optimized build in `build/` folder.
+
+---
+
+## Troubleshooting
+
+### "API error" or "Failed to fetch"
+- Check backend is running: `curl http://127.0.0.1:8000/health`
+- Verify `REACT_APP_BACKEND_URL` is correct
+- Check CORS is enabled on backend
+
+### Messages not appearing
+- Check browser console for errors
+- Verify backend response format
+- Test backend directly with cURL
+
+### Styling broken
+- Clear cache & restart: `npm start`
+- Check for CSS conflicts
+
+---
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `REACT_APP_BACKEND_URL` | `` | Backend API URL |
+
+---
+
+## Tech Stack
+
+- **React 18** — UI framework
+- **styled-components** — CSS-in-JS styling
+- **React Context** — State management
+- **Hooks** — useCallback, useRef, useContext
+
+---
+
+## Future Enhancements
+
+- PDF upload widget in UI
+- Conversation history persistence
+- Export chat as PDF
+- Multi-language support (i18n)
+- Voice input/output
+- Advanced source filtering
+
+---
+
+## Legal Disclaimer
+
+⚠️ **This is a demo for educational purposes only.**
+
+- NOT a substitute for professional medical advice
+- Always consult licensed healthcare providers
+- Use only for learning/research
+
+---
+
+## Support
+
+See **backend/README.md** for API details and troubleshooting guide.
+
 
 ### `npm run build`
 

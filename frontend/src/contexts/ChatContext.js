@@ -39,8 +39,11 @@ export function ChatProvider({ children }) {
         const botMessage = {
           id: generateUniqueId(),
           sender: 'bot',
-          text: botResponse.reply || '', // <-- FIXED: use 'reply' from backend
+          text: botResponse.reply || '', 
           attachments: botResponse.attachments || [],
+          sources: botResponse.sources || [], // Add sources from medical backend
+          disclaimer: botResponse.disclaimer || '',
+          blocked: botResponse.blocked || false, // Flag for safety filter blocks
           timestamp: new Date().toISOString(),
         };
 
@@ -50,7 +53,7 @@ export function ChatProvider({ children }) {
         const errorMessage = {
           id: generateUniqueId(),
           sender: 'bot',
-          text: 'Sorry, something went wrong.',
+          text: 'Sorry, something went wrong. Please try again.',
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMessage]);

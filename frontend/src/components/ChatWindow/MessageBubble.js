@@ -2,11 +2,12 @@ import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { formatTimestamp } from '../../utils/formatters';
+import SourcesDisplay from '../SourcesDisplay/SourcesDisplay';
 
 const Wrapper = styled.div`
   display: flex;
   flex-direction: ${({ isUser }) => (isUser ? 'row-reverse' : 'row')};
-  align-items: flex-end;
+  align-items: flex-start;
   margin-bottom: 12px;
 `;
 
@@ -62,10 +63,15 @@ function MessageBubble({ message }) {
         {!message.avatarUrl && (isUser ? 'U' : 'B')}
       </Avatar>
 
-      <Bubble bg={isUser ? bubbleColors.user.background : bubbleColors.bot.background} color={isUser ? bubbleColors.user.color : bubbleColors.bot.color}>
-        <Text>{message.text}</Text>
-        {message.timestamp && <Timestamp dateTime={message.timestamp}>{formatTimestamp(message.timestamp)}</Timestamp>}
-      </Bubble>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <Bubble bg={isUser ? bubbleColors.user.background : bubbleColors.bot.background} color={isUser ? bubbleColors.user.color : bubbleColors.bot.color}>
+          <Text>{message.text}</Text>
+          {message.timestamp && <Timestamp dateTime={message.timestamp}>{formatTimestamp(message.timestamp)}</Timestamp>}
+        </Bubble>
+        
+        {/* Display sources for bot messages */}
+        {!isUser && message.sources && <SourcesDisplay sources={message.sources} />}
+      </div>
     </Wrapper>
   );
 }
@@ -76,6 +82,7 @@ MessageBubble.propTypes = {
     text: PropTypes.string.isRequired,
     timestamp: PropTypes.string,
     avatarUrl: PropTypes.string,
+    sources: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
 };
 

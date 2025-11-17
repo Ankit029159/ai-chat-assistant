@@ -5,6 +5,7 @@ import { useChat } from './contexts/ChatContext';
 import ThemeToggle from './components/ThemeToggle/ThemeToggle';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import SystemNotice from './components/SystemNotice/SystemNotice';
+import MedicalDisclaimer from './components/MedicalDisclaimer/MedicalDisclaimer';
 
 const LazyHistoryPlaceholder = lazy(() =>
   import('./components/ConversationHistory/HistoryPlaceholder').then((mod) => ({ default: mod.HistoryPlaceholder }))
@@ -88,8 +89,11 @@ function App() {
         Skip to chat input
       </SkipToInputLink>
 
+      {/* Medical Disclaimer Banner */}
+      <MedicalDisclaimer />
+
       <Header>
-        <Title>React Chat Application</Title>
+        <Title>Medical Chat Assistant</Title>
         <ThemeToggle currentTheme={currentTheme} toggleTheme={toggleTheme} />
       </Header>
 
