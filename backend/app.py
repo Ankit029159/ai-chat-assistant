@@ -24,8 +24,37 @@ logger = logging.getLogger(__name__)
 request_count = defaultdict(list)
 
 # Configure Gemini API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("models/gemini-2.5-flash")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+try:
+    if GEMINI_KEY:
+        genai.configure(api_key=GEMINI_KEY)
+        model = genai.GenerativeModel("models/gemini-2.5-flash")
+    else:
+        # Provide a safe local fallback model for development when Gemini key is missing
+        class _LocalFallbackModel:
+            def generate_content(self, prompt):
+                class _Resp:
+                    def __init__(self, text):
+                        self.text = text
+                        self.candidates = []
+                # Simple canned reply explaining the mode
+                return _Resp("Gemini API key not configured. Running in local demo mode.\n\n" +
+                             "Prompt received: " + (prompt[:100] + "..." if len(prompt) > 100 else prompt))
+
+        model = _LocalFallbackModel()
+        logger.info("GEMINI_API_KEY not set — using local fallback model for responses")
+except Exception as e:
+    # If the SDK raises on configure, fall back to a local stub so the app stays up.
+    class _LocalFallbackModel:
+        def generate_content(self, prompt):
+            class _Resp:
+                def __init__(self, text):
+                    self.text = text
+                    self.candidates = []
+            return _Resp("Gemini failed to initialize; running in fallback mode. Error: " + str(e))
+
+    model = _LocalFallbackModel()
+    logger.exception("Failed to initialize Gemini — using fallback model")
 
 app = FastAPI(title="Medical Chat Assistant")
 
@@ -237,4 +266,5 @@ async def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
+    # Run without auto-reload when started directly to avoid double-process behavior in some environments
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=False)
