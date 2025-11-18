@@ -30,12 +30,20 @@ CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
 CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "500"))
 CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))
 MIN_DOC_SIZE: int = 300  # Minimum doc size to trigger chunking
+SEMANTIC_CHUNK_SIZE: int = int(os.getenv("SEMANTIC_CHUNK_SIZE", "800"))
 
 # Initialize text splitter for chunking large documents
 TEXT_SPLITTER = RecursiveCharacterTextSplitter(
     chunk_size=CHUNK_SIZE,
     chunk_overlap=CHUNK_OVERLAP,
     separators=["\n\n", "\n", ".", " ", ""]
+)
+
+# Semantic text splitter for medical content (larger chunks for better context)
+SEMANTIC_SPLITTER = RecursiveCharacterTextSplitter(
+    chunk_size=SEMANTIC_CHUNK_SIZE,
+    chunk_overlap=int(SEMANTIC_CHUNK_SIZE * 0.1),  # 10% overlap
+    separators=["\n\n", "\n\n## ", "\n## ", "\n", ".", " ", ""]
 )
 
 
@@ -115,10 +123,35 @@ def get_collection(name: str = "medical") -> Optional[chromadb.Collection]:
     return None
 
 
+def _chunk_medical_text(text: str, semantic: bool = True) -> List[str]:
+    """
+    Chunk text with semantic awareness for medical documents.
+    
+    Args:
+        text (str): Document text to chunk.
+        semantic (bool): Use semantic chunking (larger chunks, better context). Default True.
+    
+    Returns:
+        List[str]: List of text chunks.
+    
+    Notes:
+        - Semantic mode: 800 chars, preserves medical context boundaries
+        - Regular mode: 500 chars, standard overlap
+        - Both preserve paragraph and section boundaries
+    """
+    if semantic and len(text) > SEMANTIC_CHUNK_SIZE:
+        splitter = SEMANTIC_SPLITTER
+    else:
+        splitter = TEXT_SPLITTER
+    
+    return splitter.split_text(text)
+
+
 def ingest_documents(
     docs: List[Dict[str, Any]],
     collection_name: str = "medical",
-    chunk: bool = True
+    chunk: bool = True,
+    semantic: bool = True
 ) -> Dict[str, Any]:
     """
     Ingest documents into RAG store (ChromaDB or fallback JSON).
@@ -130,6 +163,7 @@ def ingest_documents(
             - "meta" (Dict, optional): Document metadata (e.g., source, date, author).
         collection_name (str): Name of ChromaDB collection. Defaults to "medical".
         chunk (bool): Whether to split large documents. Defaults to True.
+        semantic (bool): Use semantic chunking for better medical context. Defaults to True.
     
     Returns:
         Dict[str, Any]: Ingestion statistics with keys:
@@ -154,7 +188,7 @@ def ingest_documents(
                 "meta": {"source": "medical_guide.pdf", "page": 5}
             }
         ]
-        result = ingest_documents(docs)
+        result = ingest_documents(docs, semantic=True)
         print(result)  # {"added": 2, "chunks": 1, "fallback": False}
     """
     collection = get_collection(collection_name)
@@ -173,20 +207,21 @@ def ingest_documents(
             continue
 
         if chunk and len(doc_text) > MIN_DOC_SIZE:
-            # Split large documents into semantic chunks
-            chunks: List[str] = TEXT_SPLITTER.split_text(doc_text)
+            # Split documents with semantic awareness
+            chunks: List[str] = _chunk_medical_text(doc_text, semantic=semantic)
             for j, chunk_text in enumerate(chunks):
                 chunk_id = f"{doc_id}_chunk_{j}"
                 chunk_meta = {
                     **doc_meta,
                     "chunk_index": j,
                     "chunk_total": len(chunks),
-                    "original_doc_id": doc_id
+                    "original_doc_id": doc_id,
+                    "chunk_method": "semantic" if semantic else "standard"
                 }
                 ids.append(chunk_id)
                 texts.append(chunk_text)
                 metadatas.append(chunk_meta)
-            logger.debug(f"Chunked document '{doc_id}' into {len(chunks)} chunks")
+            logger.debug(f"Chunked document '{doc_id}' into {len(chunks)} chunks (semantic={semantic})")
         else:
             ids.append(doc_id)
             texts.append(doc_text)

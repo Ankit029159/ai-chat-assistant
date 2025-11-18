@@ -102,6 +102,176 @@ MEDICAL_DISCLAIMER: str = (
     "Always consult a licensed healthcare professional for personalized medical advice."
 )
 
+# Medical severity levels and triage guidelines
+SEVERITY_LEVELS: Dict[str, Dict[str, Any]] = {
+    "critical": {
+        "level": 3,
+        "indicator": "🚨 URGENT - SEEK EMERGENCY CARE",
+        "guidance": "Seek immediate emergency care (call 911 or go to ER)"
+    },
+    "high": {
+        "level": 2,
+        "indicator": "⚠️ IMPORTANT - CONSULT HEALTHCARE PROVIDER TODAY",
+        "guidance": "Contact a healthcare provider today or visit urgent care"
+    },
+    "moderate": {
+        "level": 1,
+        "indicator": "ℹ️ MONITOR - See doctor if symptoms persist",
+        "guidance": "Consult a healthcare provider if symptoms worsen or persist >3 days"
+    },
+    "low": {
+        "level": 0,
+        "indicator": "ℹ️ General Information",
+        "guidance": "Monitor at home; consult if symptoms develop or worsen"
+    }
+}
+
+# Symptom patterns for differential diagnosis
+SYMPTOM_PATTERNS: Dict[str, Dict[str, Any]] = {
+    "chest_pain": {
+        "keywords": ["chest pain", "chest discomfort", "pressure in chest"],
+        "severity": "critical",
+        "differential": [
+            "Acute coronary syndrome (ACS) / Heart attack",
+            "Pulmonary embolism (PE)",
+            "Aortic dissection",
+            "Pneumothorax (collapsed lung)",
+            "Severe gastroesophageal reflux disease (GERD)",
+            "Costochondritis (chest wall inflammation)"
+        ],
+        "red_flags": [
+            "Severe intensity",
+            "Sudden onset",
+            "Associated shortness of breath",
+            "Dizziness or syncope",
+            "Sweating or pale appearance"
+        ]
+    },
+    "severe_headache": {
+        "keywords": ["severe headache", "worst headache", "thunderclap headache"],
+        "severity": "critical",
+        "differential": [
+            "Subarachnoid hemorrhage (SAH)",
+            "Meningitis",
+            "Stroke",
+            "Temporal arteritis",
+            "Severe migraine",
+            "Acute glaucoma"
+        ],
+        "red_flags": [
+            "Sudden onset (thunderclap)",
+            "High fever",
+            "Neck stiffness",
+            "Vision changes",
+            "Focal neurological deficits"
+        ]
+    },
+    "severe_abdominal_pain": {
+        "keywords": ["severe abdominal pain", "severe stomach pain", "acute abdomen"],
+        "severity": "critical",
+        "differential": [
+            "Appendicitis",
+            "Acute pancreatitis",
+            "Bowel obstruction",
+            "Perforated viscus",
+            "Acute cholecystitis (gallbladder)",
+            "Ectopic pregnancy (if female)"
+        ],
+        "red_flags": [
+            "Severe intensity",
+            "Fever (>101°F)",
+            "Vomiting/retching",
+            "Blood in stool/vomit",
+            "Distended abdomen"
+        ]
+    },
+    "fever_with_rash": {
+        "keywords": ["fever", "rash", "spots", "meningitis"],
+        "severity": "critical",
+        "differential": [
+            "Meningitis",
+            "Measles",
+            "Scarlet fever",
+            "Rocky Mountain spotted fever",
+            "Viral exanthem"
+        ],
+        "red_flags": [
+            "Non-blanching petechial rash",
+            "Neck stiffness",
+            "Altered mental status",
+            "High fever"
+        ]
+    },
+    "difficulty_breathing": {
+        "keywords": ["shortness of breath", "trouble breathing", "can't breathe", "dyspnea"],
+        "severity": "critical",
+        "differential": [
+            "Acute coronary syndrome",
+            "Pulmonary embolism",
+            "Asthma/COPD exacerbation",
+            "Pneumonia",
+            "Anaphylaxis",
+            "Pneumothorax"
+        ],
+        "red_flags": [
+            "At rest or minimal exertion",
+            "Associated chest pain",
+            "Wheezing or stridor",
+            "Cyanosis",
+            "Altered consciousness"
+        ]
+    },
+    "chest_trauma": {
+        "keywords": ["chest injury", "chest trauma", "rib pain after injury"],
+        "severity": "high",
+        "differential": [
+            "Rib fractures",
+            "Pulmonary contusion",
+            "Hemothorax",
+            "Pneumothorax",
+            "Cardiac contusion"
+        ],
+        "red_flags": [
+            "Difficulty breathing",
+            "Asymmetric breath sounds",
+            "Hypotension"
+        ]
+    },
+    "fever": {
+        "keywords": ["fever", "temperature", "chills"],
+        "severity": "moderate",
+        "differential": [
+            "Viral infection (flu, cold, COVID-19)",
+            "Bacterial infection (UTI, pneumonia, strep)",
+            "Fungal infection",
+            "Medications (drug fever)"
+        ],
+        "red_flags": [
+            "Very high fever (>104°F)",
+            "Fever >7 days",
+            "Associated severe symptoms",
+            "Immunocompromised"
+        ]
+    },
+    "headache": {
+        "keywords": ["headache"],
+        "severity": "low",
+        "differential": [
+            "Tension headache",
+            "Migraine",
+            "Sinus headache",
+            "Caffeine withdrawal",
+            "Dehydration"
+        ],
+        "red_flags": [
+            "Change in pattern",
+            "Sudden worst ever",
+            "With fever/stiff neck",
+            "With focal deficits"
+        ]
+    }
+}
+
 
 # === Gemini Model Initialization ===
 
@@ -315,12 +485,124 @@ def safety_check(text: str) -> Tuple[bool, str]:
     return True, ""
 
 
+def get_symptom_severity(text: str) -> Tuple[str, Dict[str, Any]]:
+    """
+    Assess symptom severity and return triage guidance.
+    
+    Args:
+        text (str): User message describing symptoms.
+    
+    Returns:
+        Tuple[str, Dict]: (severity_level, triage_info)
+            - severity_level: "critical", "high", "moderate", "low"
+            - triage_info: Dict with indicator, guidance, differential diagnoses
+    
+    Notes:
+        - Critical: life-threatening symptoms requiring emergency care
+        - High: serious symptoms requiring same-day evaluation
+        - Moderate: concerning symptoms requiring prompt evaluation
+        - Low: minor symptoms that can be monitored
+    """
+    lower_text = text.lower()
+    max_severity_level = -1
+    matched_pattern = None
+    
+    # Check for critical and high-severity patterns first
+    for pattern_key, pattern_info in SYMPTOM_PATTERNS.items():
+        keywords = pattern_info.get("keywords", [])
+        if any(keyword in lower_text for keyword in keywords):
+            severity = pattern_info.get("severity", "low")
+            severity_level = SEVERITY_LEVELS[severity]["level"]
+            
+            if severity_level > max_severity_level:
+                max_severity_level = severity_level
+                matched_pattern = pattern_info
+    
+    # Determine final severity level
+    if max_severity_level >= 3:
+        final_severity = "critical"
+    elif max_severity_level >= 2:
+        final_severity = "high"
+    elif max_severity_level >= 1:
+        final_severity = "moderate"
+    else:
+        final_severity = "low"
+    
+    severity_info = SEVERITY_LEVELS[final_severity].copy()
+    
+    # Add differential diagnosis if pattern matched
+    if matched_pattern:
+        severity_info["differential"] = matched_pattern.get("differential", [])
+        severity_info["red_flags"] = matched_pattern.get("red_flags", [])
+    
+    return final_severity, severity_info
+
+
+def generate_triage_response(text: str) -> str:
+    """
+    Generate triage-aware response with severity guidance.
+    
+    Args:
+        text (str): User symptom description.
+    
+    Returns:
+        str: Formatted triage guidance with severity indicator.
+    
+    Notes:
+        - Includes severity level indicator (emoji-based)
+        - Lists possible differential diagnoses
+        - Highlights red flag symptoms
+        - Recommends appropriate care level
+    """
+    severity, info = get_symptom_severity(text)
+    lower_text = text.lower()
+    
+    response = f"{info['indicator']}\n\n"
+    
+    # Add differential diagnosis if available
+    if "differential" in info and info["differential"]:
+        response += "**Possible causes to discuss with a healthcare provider:**\n"
+        for diagnosis in info["differential"][:5]:  # Limit to 5
+            response += f"• {diagnosis}\n"
+        response += "\n"
+    
+    # Add red flags if applicable
+    if "red_flags" in info and info["red_flags"]:
+        response += "**Red flags that warrant immediate evaluation:**\n"
+        for flag in info["red_flags"][:4]:  # Limit to 4
+            response += f"• {flag}\n"
+        response += "\n"
+    
+    # Care recommendation
+    response += f"**Recommended action:** {info['guidance']}\n\n"
+    response += "**What to do now:**\n"
+    
+    if severity == "critical":
+        response += (
+            "1. Call 911 or go to the nearest emergency room immediately\n"
+            "2. Do not drive yourself if symptoms are severe\n"
+            "3. Inform emergency responders of all symptoms\n"
+        )
+    elif severity == "high":
+        response += (
+            "1. Contact your healthcare provider or urgent care clinic today\n"
+            "2. If unable to reach provider, visit urgent care\n"
+            "3. Prepare a list of all symptoms and when they started\n"
+        )
+    else:
+        response += (
+            "1. Monitor your symptoms closely\n"
+            "2. Stay hydrated and get adequate rest\n"
+            "3. Contact your doctor if symptoms worsen or persist\n"
+        )
+    
+    response += f"\n{MEDICAL_DISCLAIMER}"
+    return response
+
+
 def symptom_checker(text: str) -> str:
     """
     Rule-based symptom checking and general guidance.
-    
-    Provides pre-computed guidance for common symptoms.
-    Emphasizes consulting healthcare professionals.
     
     Args:
         text: User message text.
@@ -332,43 +614,9 @@ def symptom_checker(text: str) -> str:
         - Uses simple keyword matching (not ML-based)
         - Returns conservative, disclaimer-inclusive guidance
         - All responses recommend professional consultation
-        - Future enhancement: severity scoring, triage logic
+        - Future enhancement: ML-based NLP for accuracy
     """
-    lower_text = text.lower()
-    
-    # Check for specific symptom combinations
-    if "fever" in lower_text and any(k in lower_text for k in ["cough", "cold"]):
-        return (
-            "Possible causes include common viral infections (flu, common cold). "
-            "Seek medical care if fever is high (>103°F), persistent (>3 days), or accompanied by severe symptoms."
-        )
-    
-    # Chest pain (high priority)
-    if "chest pain" in lower_text or ("pain" in lower_text and "chest" in lower_text):
-        return (
-            "⚠️ Chest pain can indicate serious conditions (cardiac, pulmonary, GI). "
-            "Seek EMERGENCY care if pain is severe, sudden, or accompanied by shortness of breath, dizziness, or cold sweats."
-        )
-    
-    # Abdominal pain
-    if "stomach pain" in lower_text or "abdominal pain" in lower_text:
-        return (
-            "Common causes: gas, indigestion, gastritis, food poisoning, or infection. "
-            "Seek a doctor if pain is severe, persistent (>2 hours), or accompanied by fever, vomiting, or blood."
-        )
-    
-    # Headache
-    if "headache" in lower_text:
-        return (
-            "Headaches have many causes: tension, dehydration, migraine, sinus issues, or less common serious causes. "
-            "Consult a clinician for recurrent, severe, or sudden-onset headaches."
-        )
-    
-    # Generic response
-    return (
-        "If you're experiencing symptoms, multiple causes are possible. "
-        "Always consult a healthcare professional for accurate diagnosis and treatment."
-    )
+    return generate_triage_response(text)
 
 
 @app.post("/chat", tags=["Chat"])
@@ -774,8 +1022,9 @@ if __name__ == "__main__":
         - Logs startup messages with model initialization status
     """
     port = int(os.getenv("PORT", "8000"))
+    rag_store = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
     logger.info(f"🚀 Starting Medical Chat Assistant on 0.0.0.0:{port}")
-    logger.info(f"📚 RAG Store: {CHROMA_PERSIST_DIR}")
+    logger.info(f"📚 RAG Store: {rag_store}")
     logger.info(f"⚙️  Model: {GEMINI_MODEL_NAME}")
     
     uvicorn.run(
